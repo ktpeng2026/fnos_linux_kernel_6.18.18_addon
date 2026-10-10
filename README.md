@@ -23,6 +23,7 @@ is absent. Check the target with `find /lib/modules/$(uname -r) -name '*.ko*'` o
 
 ## Files built
 
+- `x_tables.ko` with the legacy table API enabled
 - `ip_tables.ko`
 - `iptable_filter.ko`
 - `iptable_mangle.ko`
@@ -40,6 +41,42 @@ they were not loaded, not that they were excluded from the kernel build.
 `iptable_filter.ko` is different: it is excluded because the legacy xtables
 switch is disabled. The add-on includes all requested modules so they can be
 built and deployed as one matching set.
+
+## Required x_tables replacement
+
+The fnOS 6.18.18 `x_tables.ko` was built with
+`CONFIG_NETFILTER_XTABLES_LEGACY=n`. It therefore does not export legacy symbols
+such as `xt_register_table`, `xt_replace_table`, `xt_recseq`, and
+`xt_percpu_counter_alloc`. Building only `ip_tables.ko` produces modpost
+undefined-symbol warnings and the resulting module cannot be loaded.
+
+This add-on therefore also builds `x_tables.ko`, compiling the same 6.18.18
+source with the legacy table API enabled. The generated `x_tables.ko` must
+replace the target's original module; it must not be loaded alongside the old
+module because both export the normal xtables symbols.
+
+Before replacing anything, locate and back up the installed module:
+
+```sh
+modinfo -n x_tables
+cp "$(modinfo -n x_tables)" "$(modinfo -n x_tables).backup"
+```
+
+Install all generated modules under a dedicated directory, but replace the
+module selected by `modprobe x_tables` with the new `x_tables.ko`, then run
+`depmod -a` and reboot. Do not attempt to unload a busy `x_tables` module on a
+running firewall/NAT system.
+
+After reboot, verify the required API before loading `ip_tables`:
+
+```sh
+grep -w xt_register_table /proc/kallsyms
+modprobe ip_tables
+```
+
+If `/proc/kallsyms` hides addresses, the symbol name should still be visible to
+root. The supplied `load.sh` performs this check and refuses to continue when
+the old non-legacy `x_tables` module is loaded.
 
 ## Prepare a matching ARM64 kernel tree
 
@@ -94,6 +131,11 @@ make -C "$KDIR" \
 The default is a strict modpost build (`KBUILD_MODPOST_WARN=0`) because the
 target kernel build environment is expected to contain the matching
 `Module.symvers`.
+
+Messages such as `Skipping BTF generation ... due to unavailability of
+vmlinux` do not prevent module loading. They only mean detached BTF metadata was
+not generated. The undefined legacy `xt_*` symbols are the issue that must be
+fixed by replacing `x_tables.ko`.
 
 Clean ARM64 build outputs:
 

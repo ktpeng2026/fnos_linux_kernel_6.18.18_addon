@@ -13,7 +13,15 @@ load_one()
     insmod "$MODULE_DIR/$module_name.ko"
 }
 
-modprobe x_tables
+if grep -q '^x_tables ' /proc/modules; then
+    if ! grep -qw xt_register_table /proc/kallsyms; then
+        echo "The loaded x_tables module has no legacy table API." >&2
+        echo "Install this add-on's x_tables.ko and reboot before loading ip_tables." >&2
+        exit 1
+    fi
+else
+    load_one x_tables
+fi
 modprobe nf_conntrack
 modprobe nf_nat
 
