@@ -104,6 +104,16 @@ target uses `CONFIG_MODVERSIONS=y` and strongly recommended in all cases.
 
 ## Build
 
+Copy the complete add-on directory to the ARM64 target. In particular, the
+updated Makefile requires `src/x_tables.c`; copying only the Makefile and shell
+scripts results in `No rule to make target 'src/x_tables.o'`.
+
+Verify the file before compiling:
+
+```sh
+test -f src/x_tables.c && echo "x_tables source present"
+```
+
 On the ARM64 target, the scripts use the running kernel build directory by
 default:
 
