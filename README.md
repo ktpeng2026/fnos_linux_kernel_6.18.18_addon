@@ -189,6 +189,17 @@ Load dependencies and modules as root:
 ./load.sh /path/to/modules
 ```
 
+For a non-persistent test, unload them in reverse dependency order with:
+
+```sh
+./unload.sh
+```
+
+Modules loaded only with `insmod`, `modprobe`, or `load.sh` are removed by a
+reboot. They are not automatically loaded again unless they are installed under
+`/lib/modules/$(uname -r)`, indexed by `depmod`, and requested by a boot service,
+firewall configuration, `/etc/modules`, or a file under `/etc/modules-load.d/`.
+
 For persistent installation, place the files under
 `/lib/modules/$(uname -r)/extra/iptables-legacy/`, run `depmod -a`, then use
 `modprobe iptable_filter`, `modprobe iptable_mangle`, `modprobe iptable_nat`,
