@@ -200,6 +200,30 @@ reboot. They are not automatically loaded again unless they are installed under
 `/lib/modules/$(uname -r)`, indexed by `depmod`, and requested by a boot service,
 firewall configuration, `/etc/modules`, or a file under `/etc/modules-load.d/`.
 
+For the initial legacy `x_tables` replacement, use the supplied installer. It
+places the modules under `/lib/modules/$(uname -r)/updates/` without deleting or
+overwriting the original distribution modules:
+
+```sh
+./install-modules.sh .
+reboot
+```
+
+After reboot:
+
+```sh
+grep -w xt_register_table /proc/kallsyms
+./load.sh /lib/modules/"$(uname -r)"/updates/fnos-iptables-legacy
+```
+
+To revert, boot the system, remove the add-on files, regenerate module indexes,
+and reboot again:
+
+```sh
+./uninstall-modules.sh
+reboot
+```
+
 For persistent installation, place the files under
 `/lib/modules/$(uname -r)/extra/iptables-legacy/`, run `depmod -a`, then use
 `modprobe iptable_filter`, `modprobe iptable_mangle`, `modprobe iptable_nat`,
