@@ -1,0 +1,17 @@
+x_tables
+ip_tables
+iptable_filter
+iptable_mangle
+iptable_nat
+iptable_raw
+nf_socket_ipv4
+nf_socket_ipv6
+nf_tproxy_ipv4
+nf_tproxy_ipv6
+xt_socket
+xt_TPROXY
+xt_multiport
+xt_limit
+xt_MASQUERADE
+xt_TCPMSS
+xt_REDIRECT

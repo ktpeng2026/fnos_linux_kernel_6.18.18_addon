@@ -1,31 +1,45 @@
 #!/bin/sh
 set -eu
 
-MODULE_DIR=${1:-$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)}
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 KERNEL_RELEASE=$(uname -r)
+MODULE_DIR=${1:-$SCRIPT_DIR/releases/$KERNEL_RELEASE/$(uname -m)}
 INSTALL_DIR=${INSTALL_DIR:-/lib/modules/$KERNEL_RELEASE/updates/fnos-iptables-legacy}
-MODULES="
-x_tables
-ip_tables
-iptable_filter
-iptable_mangle
-iptable_nat
-iptable_raw
-nf_socket_ipv4
-nf_socket_ipv6
-nf_tproxy_ipv4
-nf_tproxy_ipv6
-xt_socket
-xt_TPROXY
-xt_multiport
-xt_limit
-xt_MASQUERADE
-xt_TCPMSS
-xt_REDIRECT
-"
 
 if [ "$(id -u)" -ne 0 ]; then
     echo "Run this script as root." >&2
+    exit 1
+fi
+
+if [ "$(uname -m)" != aarch64 ]; then
+    echo "This package is for aarch64, not $(uname -m)." >&2
+    exit 1
+fi
+
+if [ ! -f "$MODULE_DIR/modules.list" ] || [ ! -f "$MODULE_DIR/SHA256SUMS" ]; then
+    echo "Incomplete release bundle: $MODULE_DIR" >&2
+    echo "Build on the ARM device or download the complete releases/<kernel>/aarch64 directory." >&2
+    exit 1
+fi
+
+cmp -s "$SCRIPT_DIR/modules.list" "$MODULE_DIR/modules.list" || {
+    echo "Module list differs from this installer; use a matching release bundle." >&2
+    exit 1
+}
+
+(cd "$MODULE_DIR" && sha256sum -c SHA256SUMS) || {
+    echo "Bundle checksum verification failed; nothing was installed." >&2
+    exit 1
+}
+
+MODULES=$(cat "$SCRIPT_DIR/modules.list")
+expected_vermagic=$(modinfo -F vermagic "$MODULE_DIR/x_tables.ko")
+system_module=$(modinfo -n x_tables)
+system_vermagic=$(modinfo -F vermagic "$system_module")
+if [ "$expected_vermagic" != "$system_vermagic" ]; then
+    echo "Full vermagic differs from the installed kernel x_tables module:" >&2
+    echo "  bundle: $expected_vermagic" >&2
+    echo "  system: $system_vermagic" >&2
     exit 1
 fi
 
@@ -41,6 +55,10 @@ for module_name in $MODULES; do
         echo "Kernel release mismatch: $module_file" >&2
         echo "  module:  $module_release" >&2
         echo "  running: $KERNEL_RELEASE" >&2
+        exit 1
+    fi
+    if [ "$(modinfo -F vermagic "$module_file")" != "$expected_vermagic" ]; then
+        echo "Inconsistent vermagic: $module_file" >&2
         exit 1
     fi
 done

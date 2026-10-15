@@ -36,3 +36,7 @@ make -C "$SCRIPT_DIR" \
     CROSS_COMPILE="$CROSS_COMPILE" \
     KBUILD_MODPOST_WARN="$KBUILD_MODPOST_WARN" \
     -j"$JOBS"
+
+if [ "${SAVE_MODULES:-1}" = 1 ]; then
+    "$SCRIPT_DIR/save-modules.sh" "$SCRIPT_DIR"
+fi
