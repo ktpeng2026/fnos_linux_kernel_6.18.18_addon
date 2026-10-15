@@ -4,7 +4,6 @@
 *.mod.c
 modules.order
 Module.symvers
-releases/
 
 
 
